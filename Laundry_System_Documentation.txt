@@ -1,0 +1,239 @@
+# Laundry Management System - Full Technical & Business Documentation
+
+## 1. Project Overview
+**What this system does:**
+The system is a full-stack Web Application designed to manage an end-to-end laundry service business. It provides interfaces for customers to place pickup orders, track statuses, and manage their profiles, while providing robust dashboards for administrators and managers to oversee employees, process orders, and handle business operations.
+
+**Purpose of the software:**
+To digitize and streamline traditional laundry operations. It bridges the gap between customers needing laundry services and the business handling the pickup, cleaning, and delivery process.
+
+**Target Users:**
+- Customers: Everyday consumers who want on-demand laundry services.
+- System Admins/Business Owners: Stakeholders monitoring the overall business, managing staff (managers), and overseeing finances.
+- Managers: Employees handling day-to-day operations, order processing, and employee oversight.
+
+**Industries:**
+- On-Demand Services
+- Dry Cleaning and Laundry Business
+- Facility Management
+
+**Main Modules:**
+1. Authentication Module (Customer, Admin, and Manager Logins).
+2. Order Management Module (Service selection, scheduling, map-based location picking).
+3. Employee/Manager Management Module (CRUD operations for staff).
+4. Notification System (Real-time updates).
+5. Dashboard & Analytics (For Admin/Managers).
+
+**Overall Workflow:**
+A customer browses the app and schedules a pickup by providing their address (via map or text), preferred date, time, and service type. If they aren't logged in, the order is stored in a "pending state" in localStorage and seamlessly submitted after they authenticate. Once an order is placed, it is routed to the backend. The Admins and Managers use their specific dashboards to manage the order lifecycle, assign deliveries, and oversee operations.
+
+---
+
+## 2. Tech Stack Analysis
+
+**Framework & Core:**
+- Next.js (v15.5.2): Utilized with the App Router architecture (app/ directory). Turbopack is enabled for faster dev builds.
+- React (v19.1.0): Utilizing the latest React features and concurrent rendering.
+- TypeScript (v5.x): For strict type safety across components, API responses, and business entities.
+
+**UI & Styling Frameworks:**
+- Tailwind CSS (v4): Used for rapid UI development and styling consistency.
+- React Icons / Ionicons: Used for iconography across the dashboards and customer-facing views.
+
+**Routing & State Management:**
+- Next.js App Router: Handles server-side routing and layout nesting.
+- React Context API (UserContext.tsx): Used for lightweight global state.
+- Local State: Managed heavily via useState and useEffect hooks.
+
+**API Handling:**
+- Axios (v1.13.6): The primary HTTP client for backend communication.
+- Native Fetch API: Also utilized in some components.
+
+**Forms & Validation:**
+- React Hook Form (v7.62.0): Used for handling complex form states.
+- Zod (v4.1.5): Used as the schema validation library. Defines strict validation rules.
+
+**Maps & Real-time Data:**
+- React-Leaflet / Leaflet (v1.9.4): Integrated for geographical location picking.
+- Pusher-js (v8.4.0): Configured for real-time WebSocket communication.
+
+**Notifications:**
+- React Toastify: Used for floating, temporary toast alerts.
+
+---
+
+## 3. Folder Structure Breakdown
+
+- app/: The core Next.js 14+ App Router directory.
+  - admin/: Contains the Admin profile pages and specific admin routes.
+  - dashboard/admin/: The primary protected dashboard for the Admin role.
+  - components/: Reusable UI components.
+    - admin_layout.tsx: A specific layout wrapper for admin pages.
+    - home/map.tsx: The interactive Leaflet map component.
+    - header/ & footer/: Shared layout components.
+  - context/: Contains UserContext.tsx which wraps the application to provide global user state.
+  - customer/: Routes for managing customer profiles and data.
+  - login/: Centralized authentication directory.
+    - page.tsx: Customer login interface.
+    - admin_login/: Dedicated admin login interface.
+    - manager_login/: Dedicated manager login interface.
+  - managers/: CRUD interfaces for Managers.
+  - orders/: The primary business module. Contains LaundryOrderForm.tsx and order submission pages.
+  - pricing/ & services/: Static or dynamic pages outlining business offerings.
+  - utils/: Utility scripts, notably pusherClient.ts for WebSocket connections.
+- lib/: Business logic and shared helpers.
+  - validation/: Contains Zod validation schemas (login.schema.ts, registraion.schema.ts).
+- public/: Static assets like images and fonts.
+- next.config.ts: Configuration for Next.js behavior.
+
+---
+
+## 4. Frontend Architecture
+
+**Architectural Style:**
+The application follows a Modular Monolith frontend architecture driven by Domain-Driven Folder Structures (App Router). Business domains (Orders, Managers, Authentication) are separated into their respective route groups.
+
+**Component Hierarchy & Layouts:**
+- The root layout.tsx wraps the application, likely injecting the UserContext and global CSS (globals.css).
+- Role-specific layouts (like admin_layout.tsx) are used to wrap protected routes, isolating the dashboard UI from the public-facing storefront.
+
+**Data Flow & State Flow:**
+1. User Input: Captured via controlled components or react-hook-form.
+2. Validation: Piped through zodResolver.
+3. Submission: Dispatched via Axios/Fetch to the backend API.
+4. Persistence: Tokens (adminToken, token) and IDs (customerId) are saved to the browser's localStorage.
+5. Context Update: The global UserContext is updated to reflect the authentication state.
+
+**API Communication Pattern:**
+The app uses a direct Client-to-Server pattern. It retrieves the base URL from environment variables. Authorization is handled by manually appending Bearer token to request headers.
+
+---
+
+## 5. Complete Business Logic
+
+### A. Order Lifecycle Logic (app/orders/page.tsx)
+- Purpose: Allow customers to schedule a laundry pickup.
+- Trigger: User fills the LaundryOrderForm and clicks "Place Order".
+- Conditions & Validations:
+  - Guest Checkout Trap: If a user attempts to order without being logged in, the system triggers a Pending Order mechanism. It saves the data to localStorage('pendingOrder') and redirects to login. Upon successful login, it auto-submits the POST /orders request.
+- Pricing Calculations: The form maintains a totalAmount field.
+- Backend Dependency: POST /orders
+
+### B. Authentication & Redirection Logic (app/login/page.tsx)
+- Purpose: Secure user sessions.
+- Trigger: Form submission.
+- Logic: Takes redirect query params. On login, sets localStorage items (token, customerId, user). Updates UserContext and redirects.
+
+### C. Map-based Location Picking
+- Purpose: Ensure precise delivery/pickup routing.
+- Logic: If a user clicks "Pick on Map", a modal opens with react-leaflet. When pinned, it extracts lat and lng, formats to 6 decimal places, and injects into the address field.
+
+### D. Employee (Manager) Management (app/managers/page.tsx)
+- Purpose: Admin oversight of staff.
+- Logic: Checks for adminToken on mount. Calculates totalManagers and activeManagers. Enforces a browser confirm() before triggering DELETE API.
+
+---
+
+## 6. User Roles & Permissions
+
+1. Customer (Public User)
+- Auth Endpoint: /authentication/login
+- Token Storage: localStorage.getItem('token') and customerId.
+- Accessible Pages: Home, Pricing, Services, /orders, Customer Profile.
+- Permissions: Can place orders, pick locations, view their own order history.
+
+2. Admin
+- Auth Endpoint: /auth/login
+- Token Storage: localStorage.getItem('adminToken').
+- Accessible Pages: /dashboard/admin, /managers, /admin.
+- Permissions: Full CRUD over Managers. Can view overarching business metrics. Protected by component-level redirects.
+
+3. Manager
+- Auth Interface: /login/manager_login
+- Permissions: Restricted to managing orders, updating statuses, and overseeing delivery.
+
+---
+
+## 7. API Integration Analysis
+
+API Base URLs:
+- Uses http://localhost:3000 and process.env.NEXT_PUBLIC_API_ENDPOINT.
+
+Endpoints Discovered:
+1. POST /authentication/login (Customer Login)
+2. POST /auth/login (Admin Login)
+3. POST /orders (Create new laundry order)
+4. GET /admin/getmanagers (Fetch manager list)
+5. DELETE /admin/deletemanager/{id} (Remove manager)
+
+Error Handling:
+Axios try/catch blocks extract errors via error.response?.data?.message.
+
+---
+
+## 8. State Management Analysis
+
+- Global State: Uses React Context API (UserContext) to share customer phone and customerId.
+- Local State: Heavy reliance on React useState.
+- Persistence: Extensive use of localStorage for tokens and Pending Order cache.
+- Async Flow: Handled inside components. Loading states are used to render fallbacks.
+
+---
+
+## 9. UI/UX System Analysis
+
+- Design Patterns: Dark mode focused for public pages. Admin pages use a lighter, enterprise theme.
+- Forms: Highly structured with clear labeling. Uses native HTML5 input types.
+- Modals & Overlays: The Leaflet map opens in a fixed z-50 overlay.
+- Animations: Floating toast messages use basic custom CSS animations.
+- Responsiveness: Tailwind classes (max-w-md, w-full) ensure mobile compatibility.
+
+---
+
+## 10. Database Model Assumptions
+
+Based on the frontend data structures, inferred backend schema:
+
+1. Customer Entity
+- id (PK), phone (Unique), password_hash
+
+2. Order Entity
+- id (PK), customer_id (FK), service_type, pickup_date, pickup_time, address_coordinates, special_instructions, contact_phone, contact_email, payment_method, total_amount, status
+
+3. Employee/Manager Entity
+- id (PK), fullname, username/email, password_hash, phone, address, profile_picture, status, role
+
+---
+
+## 11. Security Analysis
+
+- Strengths: Uses JWT/Bearer token patterns. Form validation via Zod.
+- Vulnerabilities: Tokens stored in localStorage (vulnerable to XSS). Hardcoded URLs. Client-side Auth Guards (relies on useEffect instead of middleware).
+
+---
+
+## 12. Performance Analysis
+
+- Rendering: Next.js provides initial server-side rendering.
+- Bundle Optimization: Turbopack is utilized.
+- Map Loading: React-Leaflet map is conditionally rendered to save initial load time.
+
+---
+
+## 13. Missing Features & Improvement Suggestions
+
+1. Architecture: Migrate from localStorage to HttpOnly Cookies. Implement Next.js Middleware for Route Protection. Replace manual fetch with React Query.
+2. Business Features: Dynamic Pricing Engine based on weight/quantity. Order Tracking timeline/stepper.
+3. UX: Centralize environment variables.
+
+---
+
+## 14. Developer Documentation
+
+Setup Process:
+1. Clone the repository and navigate to the /frontend directory.
+2. Install dependencies: npm install
+3. Create a .env file in the root:
+   NEXT_PUBLIC_API_ENDPOINT=http://localhost:3000
+   NEXT_PUBLIC_API_URL=http://localhost:3000
+4. Run the development server: npm run dev
